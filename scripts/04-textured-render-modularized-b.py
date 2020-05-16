@@ -20,20 +20,25 @@ far = 10
 fov = 60
 
 renderer = Renderer(SHADER_TEXTURED, width, height)
-camera = Camera(width,height,[0,4,2], near, far, fov)
+camera = Camera(width,height,[0,2,1], near, far, fov)
 
 scene = Scene(renderer.ctx)
 
-floor.add_texture(get_tex(0))
-scene.add_obj(floor)
+floor2 = Obj()
+floor2.load_from_file("floor.obj")
+floor2.add_texture(get_tex(0))
+scene.add_obj(floor2)
 
 left.add_texture(get_tex(2))
+# left.add_color()
 scene.add_obj(left)
 
 right.add_texture(get_tex(4))
+# right.add_color()
 scene.add_obj(right)
 
 back.add_texture(get_tex(5))
+# back.add_color()
 scene.add_obj(back)
 
 img, depth = renderer.render(scene, camera)

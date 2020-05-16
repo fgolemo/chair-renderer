@@ -7,6 +7,7 @@ setup(name='chair_renderer',
           "matplotlib",
           "moderngl>=5.5.0",
           "numpy",
-          "pyrr"
+          "pyrr",
+          "ModernGL.ext.obj"
       ]
       )
