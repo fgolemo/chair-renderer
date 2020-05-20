@@ -19,7 +19,7 @@ class Renderer(object):
         self.fbo = self.ctx.framebuffer(color_attachments=[cbo], depth_attachment=self.dbo)
         self.fbo.use()
 
-    def render(self, scene, camera):
+    def render(self, scene, camera, light=(1.0,1.0,1.0)):
         self.ctx.clear()
 
         # create a C-style binary buffer for the scene data
@@ -34,6 +34,8 @@ class Renderer(object):
         # get the camera parameters and feed them into the renderer
         proj, lookat = camera.get_view_model()
         self.prog['model'].write((proj * lookat).astype('f4').tobytes())
+        self.prog['Light'].value = light
+        # prog['Color'].value = (1.0, 1.0, 1.0, 0.25)
 
         # render out the current
         vao.render(moderngl.TRIANGLES)

@@ -2,8 +2,8 @@ from PIL import Image
 import numpy as np
 from moderngl.ext import obj
 import colorsys
-
-from chair_renderer.utils import brith_color
+from scipy.spatial.transform import Rotation as R
+from chair_renderer.utils import brith_color, normalize_v3
 
 MAX_TEX_TILING = 2
 
@@ -174,16 +174,14 @@ class Obj(object):
             assert len(color) == 3
             r, g, b = color
         self.texture_image = Image.new("RGB", (256, 256), (r, g, b))
-
-        if not self.has_texture or len(self.textures) == 0:
-            self.has_texture = True
-            self.textures = [ # bare minimum
-                [0,0,0],
-                [0,1,0],
-                [1,0,0],
-            ]
-            for _ in range(len(self.vertices)-3):
-                self.textures.append([np.random.rand(), np.random.rand(), 0])
+        self.has_texture = True
+        self.textures = [  # bare minimum
+            [0, 0, 0],
+            [0, 1, 0],
+            [1, 0, 0],
+        ]
+        for _ in range(len(self.vertices) - 3):
+            self.textures.append([np.random.rand(), np.random.rand(), 0])
 
     def pack(self):
         self.vertices = np.array(self.vertices, dtype=np.float16)
@@ -191,11 +189,47 @@ class Obj(object):
 
         if self.has_normals:
             self.normals = np.array(self.normals, dtype=np.float16)
+        else:
+            self.calc_normals()
+            self.has_normals = True  # because the shader expects them
+
         if self.has_texture:
             assert self.texture_image is not None  # need to call `obj.add_texture(path)` first
             self.textures = np.array(self.textures, dtype=np.float16)
 
-        print(self.vertices, self.vertices.dtype)
-        print(self.faces, self.faces.dtype)
-        print(self.normals, self.normals.dtype)
-        print(self.textures, self.textures.dtype)
+        # for x in [self.vertices, self.faces, self.normals, self.textures]:
+        #     print (len(x))
+
+    def rotate(self, x, y, z):
+        # in degrees
+        r = R.from_euler("xyz", (x, y, z), degrees=True)
+        self.vertices = np.array(self.vertices)
+        self.vertices = np.matmul(self.vertices, r.as_dcm())
+
+    def translate(self, x, y, z):
+        print (f"moving obj by {x}x, {y}y, {z}z")
+        self.vertices = np.array(self.vertices)
+        self.vertices[:, 0] += x
+        self.vertices[:, 1] += y
+        self.vertices[:, 2] += z
+
+    def calc_normals(self):
+        self.normals = np.zeros(self.vertices.shape, dtype=self.vertices.dtype)
+        self.faces = np.array(self.faces)
+        self.vertices = np.array(self.vertices)
+        tris = self.vertices[self.faces]
+        # Calculate the normal for all the triangles, by taking the cross product of the vectors v1-v0, and v2-v0 in each triangle
+
+        n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
+        # n is now an array of normals per triangle. The length of each normal is dependent the vertices,
+        # we need to normalize these, so that our next step weights each normal equally.
+        n = normalize_v3(n)
+        # now we have a normalized array of normals, one per triangle, i.e., per triangle normals.
+        # But instead of one per triangle (i.e., flat shading), we add to each vertex in that triangle,
+        # the triangles' normal. Multiple triangles would then contribute to every vertex, so we need to normalize again afterwards.
+        # The cool part, we can actually add the normals through an indexed view of our (zeroed) per vertex normal array
+
+        self.normals[self.faces[:, 0]] += n
+        self.normals[self.faces[:, 1]] += n
+        self.normals[self.faces[:, 2]] += n
+        self.normals = normalize_v3(self.normals)

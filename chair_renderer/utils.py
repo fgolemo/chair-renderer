@@ -8,3 +8,12 @@ def brith_color():
     r, g, b = [int(256 * i) for i in colorsys.hls_to_rgb(h, l, s)]
 
     return r, g, b
+
+def normalize_v3(arr):
+    ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
+    arr2 = np.copy(arr)
+    lens = np.sqrt(arr[:, 0] ** 2 + arr[:, 1] ** 2 + arr[:, 2] ** 2) + 0.1
+    arr2[:, 0] /= lens
+    arr2[:, 1] /= lens
+    arr2[:, 2] /= lens
+    return arr2
