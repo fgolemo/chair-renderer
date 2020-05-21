@@ -15,13 +15,22 @@ class Scene(object):
         self.ctx = ctx
         self.has_textures = False
         self.objs = []
+        self.packed = None
+        self.packed_texture = None
+        self.tex = None
 
     def add_obj(self, obj):
         self.objs.append(obj)
         if obj.has_texture:
             self.has_textures = True
+        self.packed = None
+        self.packed_texture = None
+        self.tex = None
 
     def pack(self):
+        if self.packed is not None:
+            return self.packed
+
         for o in self.objs:
             o.pack()
 
@@ -46,28 +55,36 @@ class Scene(object):
                         output_textures.append([u, v, w])
 
         if len(output_normals) + len(output_textures) == 0:
-            return np.array(output_vertices, dtype='f4').flatten()
+            self.packed =  np.array(output_vertices, dtype='f4').flatten()
 
         elif len(output_normals) > 0 and len(output_textures) == 0:
             out = list(zip(output_vertices, output_normals))
-            return np.array(out, dtype='f4').flatten()
+            self.packed =  np.array(out, dtype='f4').flatten()
 
         elif len(output_textures) > 0 and len(output_normals) == 0:
             out = list(zip(output_vertices, output_textures))
-            return np.array(out, dtype='f4').flatten()
+            self.packed =  np.array(out, dtype='f4').flatten()
 
         elif len(output_textures) > 0 and len(output_normals) > 0:
             out = list(zip(output_vertices, output_normals, output_textures))
-            return np.array(out, dtype='f4').flatten()
+            self.packed =  np.array(out, dtype='f4').flatten()
+        return self.packed
 
     def pack_textures(self):
         assert self.has_textures
 
+        if self.packed_texture is not None:
+            self.packed_texture.use()
+            return
+
+        if self.tex is not None:
+            self.tex = None
+
         if len(self.objs) == 1:
-            tex = self.objs[0].texture_image
+            self.tex = self.objs[0].texture_image
         else:
             # in this case we're repeating the texture 4 times to allow up to MAX_TEX_TILINGx repetition
-            tex = Image.new(
+            self.tex = Image.new(
                 'RGB',
                 (MAX_TEX_TILING * 500 * len(self.objs), 500 * MAX_TEX_TILING))
 
@@ -77,18 +94,18 @@ class Scene(object):
 
                 # 4 copies because I can't think of a better way to do this without massive effort
                 # this only works with MAX_TEX_TILING == 2. If this is larger then you have to loop over the tex.paste()
-                tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx, 0))
-                tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx + 500, 0))
-                tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx, 500))
-                tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx + 500, 500))
+                self.tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx, 0))
+                self.tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx + 500, 0))
+                self.tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx, 500))
+                self.tex.paste(tmp_tex, (500 * MAX_TEX_TILING * idx + 500, 500))
 
         # import matplotlib.pyplot as plt
         # plt.imshow(tex)
         # plt.show()
 
-        texture = self.ctx.texture(tex.size, 3, tex.tobytes())
-        texture.build_mipmaps()
-        texture.use()
+        self.packed_texture = self.ctx.texture(self.tex.size, 3, self.tex.tobytes())
+        self.packed_texture.build_mipmaps()
+        self.packed_texture.use()
 
 
 def get_concat_h_resize(im1, im2, resample=Image.BICUBIC,
@@ -207,7 +224,7 @@ class Obj(object):
         self.vertices = np.matmul(self.vertices, r.as_dcm())
 
     def translate(self, x, y, z):
-        print (f"moving obj by {x}x, {y}y, {z}z")
+        # print (f"moving obj by {x}x, {y}y, {z}z")
         self.vertices = np.array(self.vertices)
         self.vertices[:, 0] += x
         self.vertices[:, 1] += y

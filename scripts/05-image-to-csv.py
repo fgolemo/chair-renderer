@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-PATH = "mgl-test-{}.png"
-OUT = "mgl-test.csv"
+# PATH = "mgl-test-{}.png"
+# OUT = "mgl-test.csv"
+PATH = "chair/0004-{}.png"
+OUT = "chair-test.csv"
 
 img = plt.imread(PATH.format("rgb"))
 print (img.shape, img.min(), img.max(), img.dtype)
